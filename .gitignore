@@ -1,0 +1,15 @@
+.*
+_*
+dist
+build
+*.c
+*.so
+*.egg-info
+*.whl
+*.gz
+
+!.gitignore
+!.vscode
+!__init__.py
+!.github
+!_version.py

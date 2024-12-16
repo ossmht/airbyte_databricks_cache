@@ -13,3 +13,4 @@ build
 !__init__.py
 !.github
 !_version.py
+!_processors

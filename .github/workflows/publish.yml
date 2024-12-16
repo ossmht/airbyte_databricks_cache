@@ -23,6 +23,7 @@ jobs:
       run: |
         pip install poetry
         poetry install --with dev
+        poetry self add "poetry-dynamic-versioning[plugin]"
     - name: build_wheel
       shell: bash
       id: build_whl

@@ -22,7 +22,7 @@ jobs:
       shell: bash
       run: |
         pip install poetry        
-        poetry install # --with dev
+        poetry install --with dev
     - name: build_wheel
       shell: bash
       id: build_whl

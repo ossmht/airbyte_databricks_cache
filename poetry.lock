@@ -2085,6 +2085,25 @@ test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=8.3.2)", "pytest-
 type = ["mypy (>=1.11.2)"]
 
 [[package]]
+name = "poetry-dynamic-versioning"
+version = "1.4.1"
+description = "Plugin for Poetry to enable dynamic versioning based on VCS tags"
+optional = false
+python-versions = "<4.0,>=3.7"
+files = [
+    {file = "poetry_dynamic_versioning-1.4.1-py3-none-any.whl", hash = "sha256:44866ccbf869849d32baed4fc5fadf97f786180d8efa1719c88bf17a471bd663"},
+    {file = "poetry_dynamic_versioning-1.4.1.tar.gz", hash = "sha256:21584d21ca405aa7d83d23d38372e3c11da664a8742995bdd517577e8676d0e1"},
+]
+
+[package.dependencies]
+dunamai = ">=1.21.0,<2.0.0"
+jinja2 = ">=2.11.1,<4"
+tomlkit = ">=0.4"
+
+[package.extras]
+plugin = ["poetry (>=1.2.0,<2.0.0)"]
+
+[[package]]
 name = "proto-plus"
 version = "1.25.0"
 description = "Beautiful, Pythonic protocol buffers."
@@ -3654,4 +3673,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "ddb4e68d7919f3c5646af7505ba59ed0214bfa619803239caf934134e592579e"
+content-hash = "26c36077ada5fd1a4d27a7ae6a0a5855d27e7193473ff9ac20553b61ce53799f"

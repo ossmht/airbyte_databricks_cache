@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "airbyte-databricks-cache"
-version = "0.1.0"
+version = "0.0.0"
 description = ""
 authors = ["ossmht <ossmht@gmail.com>"]
 readme = "README.md"
@@ -13,7 +13,12 @@ databricks-sql-connector = "^3.6.0"
 
 [tool.poetry.group.dev.dependencies]
 twine = "^6.0.1"
+poetry-dynamic-versioning = "^1.4.1"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+# build-backend = "poetry.core.masonry.api"
+
+[tool.poetry-dynamic-versioning]
+enable = true

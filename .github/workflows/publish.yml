@@ -21,7 +21,7 @@ jobs:
     - name: poetry install
       shell: bash
       run: |
-        pip install poetry        
+        pip install poetry
         poetry install --with dev
     - name: build_wheel
       shell: bash

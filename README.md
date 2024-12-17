@@ -44,7 +44,6 @@ destination.write(source, ...)
 Happens via github workflow.
 
 ```sh
-# build via github actions
 
 # release
 git fetch --tags origin

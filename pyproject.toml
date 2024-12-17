@@ -6,7 +6,7 @@ authors = ["ossmht <ossmht@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.10,<3.13"
 airbyte = "^0.21.0"
 databricks-sql-connector = "^3.6.0"
 

@@ -15,9 +15,11 @@ pip install airbyte-databricks-cache
 ```py
 
 import airbyte as ab
-import airbyte_databricks_cache # must import this in order to inject the modules into airbyte.caches.databricks
+#
+# Must import airbyte_databricks_cache to inject the module into airbyte.caches.databricks
+import airbyte_databricks_cache 
+# So this is possible now:
 from airbyte.caches.databricks import DatabricksCache # pylint: disable=E0401:import-error
-# from airbyte.caches.databricks import DatabricksCache
 
 # create airbyte source
 source = ab.get_source(...)
@@ -47,7 +49,8 @@ Happens via github workflow.
 
 # release
 git fetch --tags origin
-gh release create v0.1.2 --target master --generate-notes
+git describe --tags --abbrev=0
+gh release create v0.1.8 --target feat-workflow --generate-notes
 git fetch --tags origin
 
 

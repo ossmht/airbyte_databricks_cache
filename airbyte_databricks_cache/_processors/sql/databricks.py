@@ -147,8 +147,11 @@ class DatabricksSqlProcessor(SqlProcessorBase):
             override: logging for any SQL being executed
         """
         logger = get_global_file_logger() # here to makde sure the hacked version is picked up
-        logger.info(f"executing SQL on databricks:")
-        logger.info(f"{sql}")
+        if logger is None:
+            print("WARN logging is disabled as no temp directory available. Use AIRBYTE_LOGGING_ROOT to configure logging if required")
+        else:
+            logger.info(f"executing SQL on databricks:")
+            logger.info(f"{sql}")
         return super()._execute_sql(sql)
         
     @overrides

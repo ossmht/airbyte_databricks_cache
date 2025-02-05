@@ -1,6 +1,7 @@
 """A Databricks implementation of the SQL processor."""
 
 from __future__ import annotations
+from databricks.sqlalchemy.base import DatabricksDialect
 
 from concurrent.futures import ThreadPoolExecutor
 from textwrap import indent
@@ -44,17 +45,17 @@ MAX_UPLOAD_THREADS = 8
 
 
 #
-## HACK
+# HACK
 # databricks sql dialect only implements those methods that are required for its e2e tests,
 # but pyairbyte complains, hence we mark the property as None and it uses json.dumps as a backup
 #
-from databricks.sqlalchemy.base import DatabricksDialect
 DatabricksDialect._json_serializer = None
 
-## end of HACK
+# end of HACK
+
 
 class DatabricksConfig(SqlConfig):
-    
+
     access_token: str = Field(...)
     server_hostname: str = Field(...)
     http_path: str = Field(...)
@@ -62,7 +63,7 @@ class DatabricksConfig(SqlConfig):
     schema_name: str = Field(...)
     table_prefix: str = Field(default="")
     staging_volume_w_location: str = Field(...)
-   
+
     @overrides
     def get_sql_alchemy_url(self) -> SecretString:
         """Return the SQLAlchemy URL to use."""
@@ -75,7 +76,7 @@ class DatabricksConfig(SqlConfig):
     def get_database_name(self) -> str:
         """Return the name of the database."""
         return self.schema_name
-    
+
     @overrides
     def get_sql_engine(self) -> Engine:
         """Return a new SQL engine to use."""
@@ -86,16 +87,16 @@ class DatabricksConfig(SqlConfig):
                 "schema_translate_map": {None: self.schema_name}
             },
             future=True,
-            connect_args= {
-                # this connect arg is requried for databricks 
+            connect_args={
+                # this connect arg is requried for databricks
                 # ref: https://docs.databricks.com/en/dev-tools/python-sql-connector.html#manage-files-in-unity-catalog-volumes
-                "staging_allowed_local_path" : "/" 
+                "staging_allowed_local_path": "/"
             }
         )
 
 
 class DatabricksSQLTypeConverter(SQLTypeConverter):
-    
+
     @overrides
     def to_sql_type(  # noqa: PLR0911  # Too many return statements
         self,
@@ -103,7 +104,7 @@ class DatabricksSQLTypeConverter(SQLTypeConverter):
     ) -> sqlalchemy.types.TypeEngine:
         """Convert a value to a SQL type.
         override: convert certail sqlalchemy types into databricks types
-        
+
         """
         sql_type = super().to_sql_type(json_schema_property_def)
 
@@ -123,15 +124,15 @@ class DatabricksNormalizer(LowerCaseNormalizer):
     def normalize(name: str) -> str:
         """Normalize the name, truncating to 255 characters."""
         return LowerCaseNormalizer.normalize(name)[:255]
-    
-    
-class DatabricksSqlProcessor(SqlProcessorBase):    
+
+
+class DatabricksSqlProcessor(SqlProcessorBase):
     supports_merge_insert = False
-    file_writer_class = JsonlWriter    
+    file_writer_class = JsonlWriter
     sql_config: DatabricksConfig
     normalizer = DatabricksNormalizer
-    type_converter_class = DatabricksSQLTypeConverter # creating our own typeconverter
-           
+    type_converter_class = DatabricksSQLTypeConverter  # creating our own typeconverter
+
     @overrides
     def _quote_identifier(self, identifier: str) -> str:
         """
@@ -139,21 +140,21 @@ class DatabricksSqlProcessor(SqlProcessorBase):
             override: use backticks instead of duble quotes for databricks
         """
         return f'`{identifier}`'
-    
+
     @overrides
     def _execute_sql(self, sql: str | TextClause | Executable) -> CursorResult:
         """
             Execute the given SQL statement.
             override: logging for any SQL being executed
         """
-        logger = get_global_file_logger() # here to makde sure the hacked version is picked up
+        logger = get_global_file_logger()  # here to makde sure the hacked version is picked up
         if logger is None:
             print("WARN logging is disabled as no temp directory available. Use AIRBYTE_LOGGING_ROOT to configure logging if required")
         else:
             logger.info(f"executing SQL on databricks:")
             logger.info(f"{sql}")
         return super()._execute_sql(sql)
-        
+
     @overrides
     def _swap_temp_table_with_final_table(
         self,
@@ -165,13 +166,15 @@ class DatabricksSqlProcessor(SqlProcessorBase):
 
         This implementation requires MERGE support in the SQL DB.
         Databases that do not support this syntax can override this method.
-        
+
         override: split SQL statements sp can run on Databricks
         """
         if final_table_name is None:
-            raise exc.PyAirbyteInternalError(message="Arg 'final_table_name' cannot be None.")
+            raise exc.PyAirbyteInternalError(
+                message="Arg 'final_table_name' cannot be None.")
         if temp_table_name is None:
-            raise exc.PyAirbyteInternalError(message="Arg 'temp_table_name' cannot be None.")
+            raise exc.PyAirbyteInternalError(
+                message="Arg 'temp_table_name' cannot be None.")
 
         _ = stream_name
         deletion_name = f"{final_table_name}_deleteme"
@@ -186,7 +189,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
         )
         for command in commands.split("\n"):
             self._execute_sql(command)
-           
+
     # @overrides a final class
     def _get_sql_column_definitions(
         self,
@@ -195,7 +198,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
         """
             Return the column definitions for the given stream.
             override: to replace types for AB_RAW_ID_COLUMN and AB_META_COLUMN
-        
+
         """
         columns: dict[str, sqlalchemy.types.TypeEngine] = {}
         properties = self.catalog_provider.get_stream_properties(stream_name)
@@ -206,12 +209,13 @@ class DatabricksSqlProcessor(SqlProcessorBase):
             )
 
         # override: replace with STRING to avoid VARCHAR that databricks doesnt support without size
-        columns[AB_RAW_ID_COLUMN] = "STRING" # self.type_converter_class.get_string_type()
+        # self.type_converter_class.get_string_type()
+        columns[AB_RAW_ID_COLUMN] = "STRING"
         columns[AB_EXTRACTED_AT_COLUMN] = sqlalchemy.TIMESTAMP()
         columns[AB_META_COLUMN] = self.type_converter_class.get_json_type()
 
-        return columns           
-    
+        return columns
+
     # @overrides final table
     def _create_table_for_loading(
         self,
@@ -230,7 +234,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
         self._create_table(temp_table_name, column_definition_str)
 
         return temp_table_name
-        
+
     @overrides
     def _ensure_final_table_exists(
         self,
@@ -257,8 +261,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
             self._create_table(table_name, column_definition_str)
 
         return table_name
-    
-            
+
     @overrides
     def _write_files_to_new_table(
         self,
@@ -275,7 +278,8 @@ class DatabricksSqlProcessor(SqlProcessorBase):
             batch_id=batch_id,
         )
         internal_sf_stage_name = (
-            self.sql_config.staging_volume_w_location #airbyte.get_secret("databricks_staging_volume_w_location")            
+            # airbyte.get_secret("databricks_staging_volume_w_location")
+            self.sql_config.staging_volume_w_location
             + "/" + stream_name
         )
 
@@ -283,7 +287,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
             return str(path.absolute()).replace("\\", "\\\\")
 
         def upload_file(file_path: Path) -> None:
-            query = f"PUT '{path_str(file_path)}' INTO '{internal_sf_stage_name}/{file_path.name}';"            
+            query = f"PUT '{path_str(file_path)}' INTO '{internal_sf_stage_name}/{file_path.name}';"
             self._execute_sql(query)
 
         with ThreadPoolExecutor(max_workers=MAX_UPLOAD_THREADS) as executor:
@@ -301,29 +305,35 @@ class DatabricksSqlProcessor(SqlProcessorBase):
         ]
         files_list = ", ".join([f"'{f.name}'" for f in files])
         columns_list_str: str = indent("\n, ".join(columns_list), " " * 12)
-        variant_cols_str: str = ("\n" + " " * 21 + ", ").join([f"$1:{col}" for col in columns_list])
+        variant_cols_str: str = (
+            "\n" + " " * 21 + ", ").join([f"$1:{col}" for col in columns_list])
 
         column_definitions = self._get_sql_column_definitions(stream_name)
-        
-        # removing _airbyte_meta as when it is = '{}', which is almost always, and spark doesnt read that col, 
+
+        # removing _airbyte_meta as when it is = '{}', which is almost always, and spark doesnt read that col,
         # leading to failure of code because col doesnt exist in cast(`_airbyte_meta` as MAP<STRING, STRING>)
         # ref: AB_META_COLUMN is hardcoded as {} in this file: .venv/lib/python3.11/site-packages/airbyte/records.py
         del column_definitions['_airbyte_meta']
-           
+
         # we cast so as to not use spark inferred schema when reading json files
         l_column_definition_str_w_cast = []
         for column_name, sql_type in column_definitions.items():
             if isinstance(sql_type, sqlalchemy.types.JSON):
                 # struct/maps read from spark are identified as json by sqlalchemy
-                # these cols lose information if they are casted to string directly , so we identify the ones that are json, and perform to_json before casting to 'string' type 
+                # these cols lose information if they are casted to string directly , so we identify the ones that are json, and perform to_json before casting to 'string' type
                 # replace JSON with STRING JIT
                 sql_type = 'STRING'
-                l_column_definition_str_w_cast.append(f"cast(to_json({self._quote_identifier(column_name)}) as {sql_type}) as {self._quote_identifier(column_name)}") # e.g. "cast(to_json(`col1`) as variant) as `col1`"
+                # e.g. "cast(to_json(`col1`) as variant) as `col1`"
+                l_column_definition_str_w_cast.append(
+                    f"cast(to_json({self._quote_identifier(column_name)}) as {sql_type}) as {self._quote_identifier(column_name)}")
             else:
-                l_column_definition_str_w_cast.append(f"cast({self._quote_identifier(column_name)} as {sql_type}) as {self._quote_identifier(column_name)}") # e.g. "cast(`col1` as string) as `col1`"
-        
-        column_definition_str_w_cast = ",\n  ".join(l_column_definition_str_w_cast)
-        
+                # e.g. "cast(`col1` as string) as `col1`"
+                l_column_definition_str_w_cast.append(
+                    f"cast({self._quote_identifier(column_name)} as {sql_type}) as {self._quote_identifier(column_name)}")
+
+        column_definition_str_w_cast = ",\n  ".join(
+            l_column_definition_str_w_cast)
+
         copy_statement = f""" 
             COPY INTO {temp_table_name}
             -- FROM '{internal_sf_stage_name}' 
@@ -340,3 +350,25 @@ class DatabricksSqlProcessor(SqlProcessorBase):
         """
         self._execute_sql(text(copy_statement))
         return temp_table_name
+
+    @overrides
+    def _add_column_to_table(
+        self,
+        table: sqlalchemy.Table,
+        column_name: str,
+        column_type: sqlalchemy.types.TypeEngine,
+    ) -> None:
+        """
+        Add a column to the given table.
+        override: replace JSON with STRING
+        """
+        if isinstance(column_type, sqlalchemy.types.JSON):
+            # # this is the override - replace JSON with STRING JIT
+            column_type = 'STRING'
+
+        self._execute_sql(
+            text(
+                f"ALTER TABLE {self._fully_qualified(table.name)} "
+                f"ADD COLUMN {column_name} {column_type}"
+            ),
+        )

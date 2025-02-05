@@ -50,7 +50,8 @@ Happens via github workflow.
 # release
 git fetch --tags origin
 git describe --tags --abbrev=0
-gh release create v0.1.8 --target feat-workflow --generate-notes
+gh release create v0.1.8 --generate-notes
+# gh release create v0.1.8 --target feat-workflow --generate-notes
 git fetch --tags origin
 
 

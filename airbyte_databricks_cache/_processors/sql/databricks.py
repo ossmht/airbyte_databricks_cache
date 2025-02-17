@@ -53,6 +53,9 @@ DatabricksDialect._json_serializer = None
 
 # end of HACK
 
+# Note for future:
+# the size of the file beings uploaded to databricks volume can be tweaked as follows, if required:
+# airbyte._writers.file_writers.FileWriterBase.MAX_BATCH_SIZE = 10_000
 
 class DatabricksConfig(SqlConfig):
 
@@ -91,7 +94,9 @@ class DatabricksConfig(SqlConfig):
                 # this connect arg is requried for databricks
                 # ref: https://docs.databricks.com/en/dev-tools/python-sql-connector.html#manage-files-in-unity-catalog-volumes
                 "staging_allowed_local_path": "/"
-            }
+            },
+            pool_pre_ping=True,
+            pool_recycle=300
         )
 
 

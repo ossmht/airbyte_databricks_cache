@@ -5,6 +5,7 @@ Databricks cache implementation for PyAirbyte
 ## Installation
 
 ```sh
+pip install airbyte # pre-requisite
 pip install airbyte-databricks-cache
 
 ```
@@ -15,10 +16,7 @@ pip install airbyte-databricks-cache
 ```py
 
 import airbyte as ab
-#
-# Must import airbyte_databricks_cache to inject the module into airbyte.caches.databricks
-import airbyte_databricks_cache 
-# So this is possible now:
+import airbyte_databricks_cache  # Must import to inject the module into airbyte.caches.databricks
 from airbyte.caches.databricks import DatabricksCache # pylint: disable=E0401:import-error
 
 # create airbyte source
@@ -34,6 +32,16 @@ cache_dbks = DatabricksCache(
     staging_volume_w_location = ab.get_secret("databricks_staging_volume_w_location")
 )
 
+# read into cache
+result = source.read(
+    cache=cache_dbks,
+    streams=['xxx'],
+    force_full_refresh=False,
+    write_strategy="append"
+)
+
+### OR
+# write to destination
 destination = ab.get_destination("destination-databricks", cache_dbks)
 
 

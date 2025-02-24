@@ -9,9 +9,9 @@ from __future__ import annotations
 #
 
 from airbyte_cdk.sources.declarative.requesters.request_options.interpolated_nested_request_input_provider import InterpolatedNestedRequestInputProvider
-def hacked_eval_request_inputs(self, stream_state, stream_slice, next_page_token) :
+def hacked_eval_request_inputs(self, stream_slice, next_page_token) :
     kwargs = {
-            "stream_state": stream_state,
+            # "stream_state": stream_state, # stream_state removed from newer version of CDK
             "stream_slice": stream_slice,
             "next_page_token": next_page_token,
         }

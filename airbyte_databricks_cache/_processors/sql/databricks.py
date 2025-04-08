@@ -322,6 +322,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
 
         # we cast so as to not use spark inferred schema when reading json files
         l_column_definition_str_w_cast = []
+        l_schema_hints_for_read_files = []
         for column_name, sql_type in column_definitions.items():
             if isinstance(sql_type, sqlalchemy.types.JSON):
                 # struct/maps read from spark are identified as json by sqlalchemy
@@ -331,6 +332,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
                 # e.g. "cast(to_json(`col1`) as variant) as `col1`"
                 l_column_definition_str_w_cast.append(
                     f"cast(to_json({self._quote_identifier(column_name)}) as {sql_type}) as {self._quote_identifier(column_name)}")
+                l_schema_hints_for_read_files.append(f"{self._quote_identifier(column_name)} map<string, string>")
             else:
                 # e.g. "cast(`col1` as string) as `col1`"
                 l_column_definition_str_w_cast.append(
@@ -339,21 +341,41 @@ class DatabricksSqlProcessor(SqlProcessorBase):
         column_definition_str_w_cast = ",\n  ".join(
             l_column_definition_str_w_cast)
 
-        copy_statement = f""" 
-            COPY INTO {temp_table_name}
-            -- FROM '{internal_sf_stage_name}' 
-            -- we will need to cast since databricks COPY INTO infers colmns
-            FROM (
+
+        #
+        ## replacing COPY INTO with read_files. because COPY INTO messes up schema, and for that reason databricks considers it legacy
+        # additionally, with read_files schemaHints is very useful. we use it here to read map type cols as map<> indeed
+        #
+        # copy_statement = f""" 
+        #     COPY INTO {temp_table_name}
+        #     -- FROM '{internal_sf_stage_name}' 
+        #     -- we will need to cast since databricks COPY INTO infers colmns
+        #     FROM (
+        #         SELECT 
+        #         {column_definition_str_w_cast}
+        #         FROM '{internal_sf_stage_name}'
+        #         )
+        #     FILEFORMAT = JSON
+        #     FILES = ( {files_list} )
+        #     -- FORMAT_OPTIONS ('inferSchema' = 'true', 'mergeSchema' = 'true')
+        #     COPY_OPTIONS ('mergeSchema' = 'true')
+        # """
+        
+        for file_name in [f.name for f in files]:
+            read_files_statement = f"""
+                insert into {temp_table_name} ({columns_list_str})
                 SELECT 
-                {column_definition_str_w_cast}
-                FROM '{internal_sf_stage_name}'
-                )
-            FILEFORMAT = JSON
-            FILES = ( {files_list} )
-            -- FORMAT_OPTIONS ('inferSchema' = 'true', 'mergeSchema' = 'true')
-            COPY_OPTIONS ('mergeSchema' = 'true')
-        """
-        self._execute_sql(text(copy_statement))
+                    {column_definition_str_w_cast}, null as `_airbyte_meta`
+                    FROM read_files(
+                        '{internal_sf_stage_name}/{file_name}',
+                        format => 'json',
+                        schemaHints => '{",".join(l_schema_hints_for_read_files)}' -- integration map<string, string>, body map<string, string>
+                    )
+            """
+            print(f"executing this read_files SQL: \n{read_files_statement}")
+            self._execute_sql(text(read_files_statement))
+        
+        # self._execute_sql(text(copy_statement))
         return temp_table_name
 
     @overrides

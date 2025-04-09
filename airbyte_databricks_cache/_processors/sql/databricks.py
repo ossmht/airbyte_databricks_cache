@@ -322,7 +322,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
 
         # we cast so as to not use spark inferred schema when reading json files
         l_column_definition_str_w_cast = []
-        l_schema_hints_for_read_files = []
+        l_schema_hints_for_read_files = ["_ string"] # a dummy value since schemaHints in SQL doesnt allow empty string
         for column_name, sql_type in column_definitions.items():
             if isinstance(sql_type, sqlalchemy.types.JSON):
                 # struct/maps read from spark are identified as json by sqlalchemy
@@ -332,7 +332,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
                 # e.g. "cast(to_json(`col1`) as variant) as `col1`"
                 l_column_definition_str_w_cast.append(
                     f"cast(to_json({self._quote_identifier(column_name)}) as {sql_type}) as {self._quote_identifier(column_name)}")
-                l_schema_hints_for_read_files.append(f"{self._quote_identifier(column_name)} map<string, string>")
+                l_schema_hints_for_read_files.append(f"{self._quote_identifier(column_name)} map<string, string>") # mk them maps
             else:
                 # e.g. "cast(`col1` as string) as `col1`"
                 l_column_definition_str_w_cast.append(
@@ -369,7 +369,7 @@ class DatabricksSqlProcessor(SqlProcessorBase):
                     FROM read_files(
                         '{internal_sf_stage_name}/{file_name}',
                         format => 'json',
-                        schemaHints => '{",".join(l_schema_hints_for_read_files)}' -- integration map<string, string>, body map<string, string>
+                        schemaHints => '{",".join(l_schema_hints_for_read_files)}' 
                     )
             """
             print(f"executing this read_files SQL: \n{read_files_statement}")
